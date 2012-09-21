@@ -1,0 +1,3 @@
+basedir=/var/lib/lxc
+opt_basedir=/opt/lxc
+mounts_basedir="/mnt/dbext4/lxc /mnt/dbxfs/lxc"

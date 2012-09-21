@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Copyright (C) 2012  Alexander Yu <alex@alexyu.se>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+ask () {
+  read -p "$1" x
+  [ -z "$x" ] || [[ "$x" == [yY] ]] && return 0
+  return 1
+}
+
+template=ubuntu
+name=lxc-node
+
+basedir=/var/lib/lxc
+
+rel_dir=`dirname "$0"`
+root_dir=`cd $rel_dir;pwd`
+root_dir=${root_dir%/*}
+
+[ -e $root_dir/etc/config ] && . $root_dir/etc/config
+
+start=1
+stop=6
+
+[ "$#" -lt 2 ] && die "$(basename $0) <start container #> <stop container #> [$template] [$name]"
+start=$1
+stop=$2
+
+[ "$#" -eq 3 ] && name=$3
+[ "$#" -ge 4 ] && template=$3 name=$4
+
+echo "start=$start, stop=$stop, template=$template, name=$name"
+for (( i=$start; i <= $stop; i++ )) 
+do
+  sudo lxc-create -t $template -n $name-$i
+  echo "Created container $name-$i"
+  sudo chmod +w $basedir/$name-$i/rootfs/etc/sudoers
+  sudo sed -i "s#^%sudo.*#%sudo ALL=(ALL) NOPASSWD: ALL#" $basedir/$name-$i/rootfs/etc/sudoers
+  sudo chmod -w $basedir/$name-$i/rootfs/etc/sudoers
+  echo "Disabled sudo password prompt"
+done
+
+ask "Mount host's devices (see etc/config) ? [Y/n]: " && [ $? -eq 0 ] && mount-x $start $stop $name
+ask "Use static IP ranges? 10.0.3.10, 10.0.3.20 ... [Y/n]: " && [ $? -eq 0 ] && static-ip-x $start $stop $name
+ask "Set pub ssh key [Y/n]: " && [ $? -eq 0 ] && cp-ssh-x $start $stop $name
+

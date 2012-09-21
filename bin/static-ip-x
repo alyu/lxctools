@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Copyright (C) 2012  Alexander Yu <alex@alexyu.se>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+name=lxc-node
+basedir=/var/lib/lxc
+
+rel_dir=`dirname "$0"`
+root_dir=`cd $rel_dir;pwd`
+root_dir=${root_dir%/*}
+
+[ -e $root_dir/etc/config ] && . $root_dir/etc/config
+
+start=1
+stop=6
+incr=10
+
+[ "$#" -lt 1 ] && die "$(basename $0) <start container #> [stop container #] [$incr] [$name]"
+
+[ "$#" -eq 1 ] && start=$1 stop=$start
+[ "$#" -ge 2 ] && [[ "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$2
+[ "$#" -ge 2 ] && [[ ! "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$1 name=$2
+[ "$#" -ge 3 ] && [[ "$3" =~ ^[0-9]+$ ]] && incr=$3
+[ "$#" -ge 3 ] && [[ ! "$3" =~ ^[0-9]+$ ]] && name=$3
+[ "$#" -ge 4 ] && incr=$3 name=$4
+
+ip_address=10.0.3
+base=0
+echo "start=$start, stop=$stop, name=$name, incr=$incr"
+read -p "Start from $ip_address.N [0 + $incr]: " x
+[ ! -z "$x" ] && base=$x
+
+count=1
+for (( i=$start; i <= $stop; i++ )) 
+do
+  n=$(($count*$incr+$base))
+  echo "lxc.network.ipv4 = $ip_address.$n" | sudo tee -a $basedir/$name-$i/config
+  count=$(($count + 1))
+done
