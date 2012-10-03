@@ -44,8 +44,10 @@ stop=6
 [ "$#" -lt 2 ] && die "$(basename $0) <start container #> <stop container #> [$template] [$name]"
 start=$1
 stop=$2
-
-[ "$#" -eq 3 ] && name=$3
+[ "$#" -eq 1 ] && start=$1 stop=$start
+[ "$#" -ge 2 ] && [[ "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$2
+[ "$#" -ge 2 ] && [[ ! "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$1 name=$2
+[ "$#" -ge 3 ] && name=$3
 [ "$#" -ge 4 ] && template=$3 name=$4
 
 echo "start=$start, stop=$stop, template=$template, name=$name"
