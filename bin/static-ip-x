@@ -53,6 +53,13 @@ count=1
 for (( i=$start; i <= $stop; i++ )) 
 do
   n=$(($count*$incr+$base))
-  echo "lxc.network.ipv4 = $ip_address.$n" | sudo tee -a $basedir/$name-$i/config
+  sudo tee --append "$basedir/$name-$i/rootfs/etc/network/interfaces" << EOF
+
+auto eth0:0
+iface eth0:0 inet static
+ address $ip_address.$n
+ netmask 255.255.255.0
+ network $ip_address.0
+EOF
   count=$(($count + 1))
 done
