@@ -53,7 +53,7 @@ read -p" for bind public/private IPs [default=eth0]: " e
 
 # Ask basic public/private IP address.
 pip_address=10.0.10
-read -p "Basic IP class C [default=$ip_address]: " b
+read -p "Basic IP C class prefix [default=$pip_address]: " b
 [ ! -z "$b" ] && pip_address=$b 
 
 base=0
