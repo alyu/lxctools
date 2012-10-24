@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# Copyright (C) 2012  Alexander Yu <alex@alexyu.se>
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+die () {
+    echo >&2 "$@"
+    exit 1
+}
+
+name=lxc-node
+basedir=/var/lib/lxc
+
+rel_dir=`dirname "$0"`
+root_dir=`cd $rel_dir;pwd`
+root_dir=${root_dir%/*}
+
+[ -e $root_dir/etc/config ] && . $root_dir/etc/config
+
+start=1
+stop=6
+incr=10
+
+[ "$#" -lt 1 ] && die "$(basename $0) <start container #> [stop container #] [$incr] [$name]"
+
+[ "$#" -eq 1 ] && start=$1 stop=$start
+[ "$#" -ge 2 ] && [[ "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$2
+[ "$#" -ge 2 ] && [[ ! "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$1 name=$2
+[ "$#" -ge 3 ] && [[ "$3" =~ ^[0-9]+$ ]] && incr=$3
+[ "$#" -ge 3 ] && [[ ! "$3" =~ ^[0-9]+$ ]] && name=$3
+[ "$#" -ge 4 ] && incr=$3 name=$4
+
+ip_address=10.0.3
+
+# Ask bind public/private IP addresses' interface name.
+eth=eth0
+echo "Choose your ethX interface to create multiple virtual interfaces;"
+read -p" for bind public/private IPs [default=eth0]: " e
+[ ! -z "$e" ] && eth=$e
+
+# Ask basic public/private IP address.
+pip_address=10.0.10
+read -p "Basic IP C class prefix [default=$pip_address]: " b
+[ ! -z "$b" ] && pip_address=$b 
+
+base=0
+echo "start=$start, stop=$stop, name=$name, incr=$incr"
+read -p "Start from $pip_address.M [0 + $incr] to attach to #N static IP address: " x
+[ ! -z "$x" ] && base=$x
+
+count=1
+for (( i=$start; i <= $stop; i++ )) 
+do
+  n=$(($count*$incr+$base))
+  phynode=`hostname`
+  echo "-- Bind the IP $pip_address.$n in the interface file of physical node \"$phynode\"."
+  
+  # Virual interfaces allow naming with characters, numbers and '-' .
+  sudo tee --append /etc/network/interfaces << EOF
+  
+auto $eth:$name-$i
+iface $eth:$name-$i inet static
+ address $pip_address.$n
+ netmask 255.255.255.0
+ network $pip_address.0
+EOF
+
+  echo "-- Attached $pip_address.$n public/private IP to static $ip_address.$n IP."
+  sudo iptables -t nat -A PREROUTING --dest $pip_address.$n -j DNAT --to $ip_address.$n 
+  sudo iptables -t nat -A POSTROUTING --source $ip_address.$n -j SNAT --to $pip_address.$n
+  count=$(($count + 1))
+done
+sudo /etc/init.d/networking restart

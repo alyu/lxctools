@@ -63,5 +63,6 @@ done
 
 ask "Mount host's devices (see etc/config) ? [Y/n]: " && [ $? -eq 0 ] && mount-x $start $stop $name
 ask "Use static IP ranges? 10.0.3.10, 10.0.3.20 ... [Y/n]: " && [ $? -eq 0 ] && static-ip-x $start $stop $name
+ask "Attach public/private IPs ? ... [Y/n]: " && [ $? -eq 0 ] && attach-ip-x $start $stop $name
 ask "Set pub ssh key [Y/n]: " && [ $? -eq 0 ] && cp-ssh-x $start $stop $name
 
