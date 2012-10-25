@@ -64,8 +64,16 @@ read -p "Start from $pip_address.M [0 + $incr] to attach to #N static IP address
 # Create iptables group.
 grp_dnat="lxc-DNAT-$name"
 grp_snat="lxc-SNAT-$name"
-sudo iptables -t nat -N $grp_dnat
-sudo iptables -t nat -N $grp_snat
+
+if_dnat=$(sudo iptables-save -t nat | fgrep ":$grp_dnat - [")
+if [ -z "$if_dnat" ]; then
+    sudo iptables -t nat -N $grp_dnat
+fi
+
+if_snat=$(sudo iptables-save -t nat | fgrep ":$grp_snat - [")
+if [ -z "$if_snat" ]; then
+    sudo iptables -t nat -N $grp_snat
+fi
 
 count=1
 for (( i=$start; i <= $stop; i++ )) 
@@ -76,21 +84,29 @@ do
   echo "-- Bind the IP $pip_address.$n in the interface file of physical node \"$phynode\"."
   
   # Virual interfaces allow naming with characters, numbers and '-' .
-  sudo tee --append /etc/network/interfaces << EOF
+#  sudo tee --append /etc/network/interfaces << EOF
   
-auto $eth:$name-$i
-iface $eth:$name-$i inet static
- address $pip_address.$n
- netmask 255.255.255.0
- network $pip_address.0
-EOF
+#auto $eth:$name-$i
+#iface $eth:$name-$i inet static
+# address $pip_address.$n
+# netmask 255.255.255.0
+# network $pip_address.0
+#EOF
 
   echo "-- Attached $pip_address.$n public/private IP to static $ip_address.$n IP."
   
-  sudo iptables -t nat -A $grp_dnat --dest $pip_address.$n -j DNAT --to-destination $ip_address.$n 
+  sudo iptables -t nat -A $grp_dnat --dest $pip_address.$n  -j DNAT --to-destination $ip_address.$n 
   sudo iptables -t nat -A $grp_snat --source $ip_address.$n -j SNAT --to-source $pip_address.$n 
   count=$(($count + 1))
 done
-sudo iptables -t nat -A PREROUTING -j $grp_dnat
-sudo iptables -t nat -A POSTROUTING -j $grp_snat
-sudo /etc/init.d/networking restart
+
+if_dnat_inject=$(sudo iptables-save -t nat | fgrep "A PREROUTING -j $grp_dnat")
+if [ -z "$if_dnat_inject" ]; then
+    sudo iptables -t nat -I PREROUTING 1 -j $grp_dnat
+fi
+
+if_snat_inject=$(sudo iptables-save -t nat | fgrep "A POSTROUTING -j $grp_snat")
+if [ -z "$if_snat_inject" ]; then
+    sudo iptables -t nat -I POSTROUTING 1 -j $grp_snat
+fi
+#sudo /etc/init.d/networking restart
