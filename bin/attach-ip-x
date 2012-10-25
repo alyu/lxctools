@@ -127,4 +127,4 @@ if_snat_inject=$(sudo iptables-save -t nat | fgrep "A POSTROUTING -j $grp_snat")
 if [ -z "$if_snat_inject" ]; then
     sudo iptables -t nat -I POSTROUTING 1 -j $grp_snat
 fi
-sudo /etc/init.d/networking restart
+sudo service networking restart

@@ -76,4 +76,4 @@ do
   sudo sh -c "cat $tmpf | grep -v \"source $ifs/$ifname\" > /etc/network/interfaces"
   sudo rm $tmpf
 done
-
+sudo service networking restart
