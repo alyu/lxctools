@@ -67,31 +67,49 @@ grp_snat="lxc-SNAT-$name"
 
 if_dnat=$(sudo iptables-save -t nat | fgrep ":$grp_dnat - [")
 if [ -z "$if_dnat" ]; then
+    echo "-- Create iptables rules group for DNAT: $grp_dnat"
     sudo iptables -t nat -N $grp_dnat
 fi
 
 if_snat=$(sudo iptables-save -t nat | fgrep ":$grp_snat - [")
 if [ -z "$if_snat" ]; then
+    echo "-- Create iptables rules group for SNAT: $grp_snat"
     sudo iptables -t nat -N $grp_snat
+fi
+echo "Will forwarding IN/OUT packets by DNAT and SNAT rules groups: $grp_dnat/$grp_snat ."
+
+# Create interfaces.d. Since Ubuntu 11.10, multiple VIF become possible.
+ifs=/etc/network/interfaces.d/lxc
+echo "Will put virtual interfaces in $ifs ."
+if [ ! -e  "$ifs" ]; then
+    echo "-- Create default LXC interfaces directory: $ifs ."
+    sudo mkdir -p $ifs
 fi
 
 count=1
 for (( i=$start; i <= $stop; i++ )) 
 do
   n=$(($count*$incr+$base))
+  ifname="$name-$i" 
   
   phynode=`hostname`
-  echo "-- Bind the IP $pip_address.$n in the interface file of physical node \"$phynode\"."
+  echo "-- Bind the IP $pip_address.$n in the interface file $ifname of physical node \"$phynode\"."
   
   # Virual interfaces allow naming with characters, numbers and '-' .
-#  sudo tee --append /etc/network/interfaces << EOF
+  sudo tee $ifs/$ifname << EOF
   
-#auto $eth:$name-$i
-#iface $eth:$name-$i inet static
-# address $pip_address.$n
-# netmask 255.255.255.0
-# network $pip_address.0
-#EOF
+auto $eth:$ifname
+iface $eth:$ifname inet static
+ address $pip_address.$n
+ netmask 255.255.255.0
+ network $pip_address.0
+EOF
+
+  echo "-- Inject created virtual intefaces in main file."
+  sudo tee --append /etc/network/interfaces << EOF
+  
+source $ifs/$ifname  
+EOF
 
   echo "-- Attached $pip_address.$n public/private IP to static $ip_address.$n IP."
   
@@ -109,4 +127,4 @@ if_snat_inject=$(sudo iptables-save -t nat | fgrep "A POSTROUTING -j $grp_snat")
 if [ -z "$if_snat_inject" ]; then
     sudo iptables -t nat -I POSTROUTING 1 -j $grp_snat
 fi
-#sudo /etc/init.d/networking restart
+sudo /etc/init.d/networking restart
