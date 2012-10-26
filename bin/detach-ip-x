@@ -74,7 +74,7 @@ do
 
   echo "Remove created virtual interfaces for $ifname ."
   
-  srcln=$ifs/$ifname
+  srcln=$(echo "$ifs/$ifname"|sed 's/\//\\\//g')
   sed -i".bak" "/^source $srcln/,+0d" /etc/network/interfaces
   sudo rm $ifs/$ifname
 done
