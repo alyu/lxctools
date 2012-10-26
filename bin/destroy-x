@@ -21,6 +21,12 @@ die () {
     exit 1
 }
 
+ask () {
+  read -p "$1" x
+  [ -z "$x" ] || [[ "$x" == [yY] ]] && return 0
+  return 1
+}
+
 name=lxc-node
 
 rel_dir=`dirname "$0"`
@@ -51,3 +57,5 @@ do
     sudo rm -rf $m/$name-$i
   done
 done
+
+ask "Detach public/private IPs ? ... [Y/n]: " && [ $? -eq 0 ] && detach-ip-x $start $stop $name
