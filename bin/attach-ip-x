@@ -34,7 +34,9 @@ start=1
 stop=6
 incr=10
 
-[ "$#" -lt 1 ] && die "$(basename $0) <start container #> [stop container #] [$incr] [$name]"
+[ "$#" -lt 1 ] && die "sudo $(basename $0) <start container #> [stop container #] [$incr] [$name]"
+
+[ `whoami` != "root" ] && echo "Do: sudo $(basename $0)" && exit 1
 
 [ "$#" -eq 1 ] && start=$1 stop=$start
 [ "$#" -ge 2 ] && [[ "$2" =~ ^[0-9]+$ ]] && start=$1 stop=$2
